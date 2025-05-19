@@ -223,24 +223,69 @@ nano nr-phy.h nr-phy.cc
 ```
 
 Add NTN mode and Doppler compensation
+```bash
+// src/nr/model/nr-phy.h
+// Add to the NrPhy class declaration (around line 200-300 in most versions)
+public:
+  /**
+   * Enable/Disable NTN mode
+   * @param ntnEnabled true for NTN operation
+   */
+  void SetNtnMode(bool ntnEnabled);
+
+  /**
+   * Set NTN Doppler parameters
+   * @param ueMobility UE mobility model
+   * @param satMobility Satellite mobility model
+   */
+  void DoSetNtnDopplerParameters(Ptr<MobilityModel> ueMobility,
+                               Ptr<MobilityModel> satMobility);
+
+private:
+  bool m_ntnMode {false}; // Add this member variable
+```
 
 ```bash
-// src/nr/model/nr-phy.{h,cc}
-void NrPhy::SetNtnMode(bool ntnEnabled) {
+// src/nr/model/nr-phy.cc
+// Add anywhere in the implementation (around line 1000-1500 in most versions)
+void
+NrPhy::SetNtnMode(bool ntnEnabled)
+{
   m_ntnMode = ntnEnabled;
   
   if (ntnEnabled) {
-    // Adjust for NTN characteristics
+    // Get NTN-specific configurations
     m_tddPattern = GetNtnTddPattern(); // Longer guard periods
-    m_harqTimer = GetNtnHarqTimer(); // Extended timers
+    m_harqTimer = GetNtnHarqTimer();   // Extended timers
+    
+    NS_LOG_INFO("NTN mode activated with TDD pattern: " << m_tddPattern);
   }
 }
 
-void NrPhy::DoSetNtnDopplerParameters(Ptr<MobilityModel> ueMobility, 
-                                    Ptr<MobilityModel> satMobility) {
-  // Doppler pre-compensation logic
+void
+NrPhy::DoSetNtnDopplerParameters(Ptr<MobilityModel> ueMobility,
+                                Ptr<MobilityModel> satMobility)
+{
+  NS_LOG_FUNCTION(this);
+  
+  // Calculate relative velocity vector
   Vector3D relVelocity = ueMobility->GetVelocity() - satMobility->GetVelocity();
-  // ... (implementation continues)
+  
+  // Project onto line-of-sight vector
+  Vector3D losVector = satMobility->GetPosition() - ueMobility->GetPosition();
+  double radialVelocity = relVelocity.x * losVector.x + 
+                         relVelocity.y * losVector.y +
+                         relVelocity.z * losVector.z;
+  radialVelocity /= losVector.GetLength();
+  
+  // Calculate Doppler shift (f_d = (v/c)*f_c)
+  double dopplerShift = (radialVelocity / 3e8) * m_centerFrequency;
+  
+  // Apply pre-compensation
+  m_txFrequency = m_centerFrequency - dopplerShift;
+  NS_LOG_DEBUG("Doppler pre-compensation applied: " << dopplerShift << " Hz");
+  
+  UpdateTxConfiguration();
 }
 ```
 
