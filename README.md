@@ -91,81 +91,6 @@ The existing loop already handles this automatically for all modules in all_modu
 ---
 
 ## **Step 4: Extend for 5G NTN Support**  
-### **1. Add Satellite Channel Model (NTN-specific)**  
-Create `src/oran/model/ntn-channel.cc`:  
-```cpp
-#include "ns3/ntn-channel.h"
-#include "ns3/log.h"
-
-namespace ns3 {
-NS_LOG_COMPONENT_DEFINE ("NtnChannel");
-
-NtnChannel::NtnChannel () {
-  // Initialize NTN parameters (delay, Doppler, etc.)
-}
-
-// Implement satellite propagation models
-} // namespace ns3
-```
-
-### **2. Create Satellite Mobility Model**  
-Create `src/oran/model/ntn-mobility.cc`:  
-```cpp
-#include "ns3/ntn-mobility.h"
-#include "ns3/simulator.h"
-
-namespace ns3 {
-
-NtnMobilityModel::NtnMobilityModel () {
-  // Initialize orbital parameters (LEO/MEO)
-}
-
-Vector NtnMobilityModel::DoGetPosition () const {
-  // Implement SGP4 or simplified orbital mechanics
-  return Vector(x, y, z);
-}
-} // namespace ns3
-```
-
-### **3. Modify NR Module for NTN**  
-Edit `src/nr/model/nr-phy.cc` to add:  
-```cpp
-// Add NTN-specific PHY adaptations
-void NrPhy::SetNtnMode (bool ntnEnabled) {
-  m_ntnMode = ntnEnabled;
-  // Adjust for long delays if enabled
-}
-```
-
-### **4. Update O-RAN Interfaces**  
-Edit `src/oran/model/oran-near-rt-ric.cc`:  
-```cpp
-void OranNearRtRic::ProcessNtnReport (Ptr<NtnReport> report) {
-  // Handle satellite-specific metrics
-  if (report->GetNodeType() == NTN_SATELLITE) {
-    // Adjust scheduling for long RTT
-  }
-}
-```
-
-### **5. Update Build Files**  
-Edit `src/oran/wscript`:  
-```python
-module.source.append('model/ntn-channel.cc')
-module.source.append('model/ntn-mobility.cc')
-```
-
-### **Rebuild Everything**  
-```bash
-cd ~/ns3-install/ns-3-dev
-./ns3 configure --enable-examples --enable-tests
-./ns3 build
-```
-
----
-
-## **Step 4: Extend for 5G NTN Support**  
-
 
 ### **1. Directory Structure Overview**
 ```
@@ -322,12 +247,12 @@ void NrPhy::DoSetNtnDopplerParameters(Ptr<MobilityModel> ueMobility,
 #### **B. O-RAN RIC (Interface Extensions)**
 ```bash
 cd ~/ns3-install/ns-3-dev/src/oran/model
-nano oran-near-rt-ric.h oran-near-rt-ric.cc
+nano oran-report.h oran-near-rt-ric.cc
 ```
 
 Add NTN report processing
 ```bash
-// src/oran/model/oran-e2-messages.h
+// src/oran/model/oran-report.h
 struct NtnBeamReport {
   uint16_t beamId;
   double snr;
@@ -355,6 +280,10 @@ nano wscript
 ```
 
 Register new `ntn-channel.cc` and `ntn-mobility.cc`
+```bash
+module.source.append('model/ntn-channel.cc')
+module.source.append('model/ntn-mobility.cc')
+```
 
 ---
 
@@ -446,8 +375,6 @@ int main (int argc, char *argv[]) {
 1. **Add 3GPP NTN channel models** (TR 38.811)  
 2. **Implement Doppler pre-compensation** in PHY layer  
 3. **Extend O-RAN E2 interfaces** for dynamic beam management  
-
-**Contribute back to the community!** 🛰️  
 
 ---
 
