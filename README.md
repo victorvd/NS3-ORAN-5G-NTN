@@ -70,6 +70,7 @@ You should see:
 Processing src/oran
 Processing src/nr
 ```
+
 ---
 
 ### **Important Notes**
@@ -83,6 +84,8 @@ If nr depends on oran, ensure oran appears first in all_modules_in.
 #### 3. If Modules Don't Appear
 ° Verify the folders contain CMakeLists.txt
 ° Check for typos in all_modules_in
+
+---
 
 #### 3. Clean Build Recommended
 ```bash
