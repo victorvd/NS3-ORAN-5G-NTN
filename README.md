@@ -79,7 +79,7 @@ Processing src/nr
 The existing loop already handles this automatically for all modules in all_modules_in.
 
 #### 2. If Modules Don't Appear
- - Verify both folders, ´oran´ and ´nr, contain CMakeLists.txt
+ - Verify both folders, `oran` and `nr`, contain CMakeLists.txt
 
 ---
 
