@@ -81,14 +81,14 @@ The existing loop already handles this automatically for all modules in all_modu
 #### 2. If Modules Don't Appear
  - Verify both folders, `oran` and `nr`, contain CMakeLists.txt
 
----
-
 #### 3. Clean Build Recommended
 ```bash
 ./ns3 clean
 ./ns3 configure --enable-examples --enable-tests
 ./ns3 build
 ```
+
+---
 
 ## **Step 4: Extend for 5G NTN Support**  
 ### **1. Add Satellite Channel Model (NTN-specific)**  
