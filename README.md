@@ -164,6 +164,234 @@ cd ~/ns3-install/ns-3-dev
 
 ---
 
+## **Step 4: Extend for 5G NTN Support**  
+
+
+### **1. Directory Structure Overview**
+```
+ns3-dev/
+└── src/
+    ├── oran/
+    │   ├── model/          # For new NTN files
+    │   ├── examples/       # For test scenarios
+    │   └── wscript         # To modify
+    └── nr/
+        └── model/          # For NR modifications
+```
+
+### **2. New Files to Create**
+
+#### **A. NTN Channel Model**
+```bash
+# Navigate to NS-3's oran module
+cd ~/ns3-install/ns-3-dev/src/oran/model
+
+# Create new channel model files
+touch ntn-channel.h ntn-channel.cc
+```
+
+```bash
+// src/oran/model/ntn-channel.h
+#include "ns3/propagation-loss-model.h"
+#include "ns3/propagation-delay-model.h"
+
+namespace ns3 {
+class NtnChannel : public Object {
+public:
+  static TypeId GetTypeId();
+  NtnChannel();
+  
+  // 3GPP TR 38.811 compliant models
+  double CalculatePathLoss(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const;
+  Time CalculateDelay(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const;
+
+private:
+  double m_frequency; // Carrier frequency in Hz
+  double m_weatherLoss; // Atmospheric attenuation
+};
+} // namespace ns3
+```
+
+```bash
+// src/oran/model/ntn-channel.cc
+#include "ns3/ntn-channel.h"
+#include "ns3/log.h"
+
+namespace ns3 {
+NS_LOG_COMPONENT_DEFINE ("NtnChannel");
+
+NtnChannel::NtnChannel() {
+  // Initialize with LEO default parameters
+  m_frequency = 2e9; // 2 GHz
+  m_weatherLoss = 0.1; // dB/km
+}
+
+double NtnChannel::CalculatePathLoss(Ptr<MobilityModel> a, Ptr<MobilityModel> b) const {
+  // Implement 3GPP TR 38.811 model
+  return fspl + atmosphericLoss + rainAttenuation;
+}
+} // namespace ns3
+```
+
+
+#### **B. Satellite Mobility Model**
+```bash
+# In the same directory /ns3-install/ns-3-dev/src/oran/model
+touch ntn-mobility.h ntn-mobility.cc
+```
+
+```bash
+// src/oran/model/ntn-mobility.h
+#include "ns3/mobility-model.h"
+
+namespace ns3 {
+class NtnMobilityModel : public MobilityModel {
+public:
+  static TypeId GetTypeId();
+  NtnMobilityModel();
+  
+private:
+  virtual Vector DoGetPosition() const;
+  virtual Vector DoGetVelocity() const;
+  
+  // Orbital parameters
+  double m_altitude; // km
+  double m_inclination; // degrees
+};
+} // namespace ns3
+```
+
+```bash
+// src/oran/model/ntn-mobility.cc
+#include "ns3/ntn-mobility.h"
+#include "ns3/sgp4.h" // For precise orbital mechanics
+
+namespace ns3 {
+
+NtnMobilityModel::NtnMobilityModel() {
+  // Initialize LEO parameters
+  m_altitude = 1200; // km
+  m_inclination = 53; // degrees
+}
+
+Vector NtnMobilityModel::DoGetPosition() const {
+  // Implement SGP4 or simplified circular orbit
+  double t = Simulator::Now().GetSeconds();
+  return CalculateLEOPosition(t, m_altitude, m_inclination);
+}
+} // namespace ns3
+```
+
+#### **C. Example Scenario (Optional)**
+```bash
+cd ~/ns3-install/ns-3-dev/src/oran/examples/oran-ntn-example.cc
+touch oran-ntn-example.cc
+```
+---
+
+### **3. Existing Files to Modify**
+
+#### **A. NR PHY Layer (5G NR Adaptations)**
+```bash
+cd ~/ns3-install/ns-3-dev/src/nr/model
+nano nr-phy.h nr-phy.cc
+```
+
+Add NTN mode and Doppler compensation
+
+```bash
+// src/nr/model/nr-phy.{h,cc}
+void NrPhy::SetNtnMode(bool ntnEnabled) {
+  m_ntnMode = ntnEnabled;
+  
+  if (ntnEnabled) {
+    // Adjust for NTN characteristics
+    m_tddPattern = GetNtnTddPattern(); // Longer guard periods
+    m_harqTimer = GetNtnHarqTimer(); // Extended timers
+  }
+}
+
+void NrPhy::DoSetNtnDopplerParameters(Ptr<MobilityModel> ueMobility, 
+                                    Ptr<MobilityModel> satMobility) {
+  // Doppler pre-compensation logic
+  Vector3D relVelocity = ueMobility->GetVelocity() - satMobility->GetVelocity();
+  // ... (implementation continues)
+}
+```
+
+#### **B. O-RAN RIC (Interface Extensions)**
+```bash
+cd ~/ns3-install/ns-3-dev/src/oran/model
+nano oran-near-rt-ric.h oran-near-rt-ric.cc
+```
+
+Add NTN report processing
+```bash
+// src/oran/model/oran-e2-messages.h
+struct NtnBeamReport {
+  uint16_t beamId;
+  double snr;
+  Time propagationDelay;
+  Vector3d satellitePosition;
+};
+
+// src/oran/model/oran-near-rt-ric.cc
+void OranNearRtRic::ProcessNtnReport(Ptr<NtnReport> report) {
+  if (report->nodeType == NTN_SATELLITE) {
+    // Special handling for satellite links
+    m_ntnScheduler->AdjustForDelay(report->propagationDelay);
+    
+    if (NeedBeamHandover(report)) {
+      TriggerNtnHandover(report->beamId);
+    }
+  }
+}
+```
+
+#### **C. Build System (wscript)**
+```bash
+~/ns3-install/ns-3-dev/src/oran/
+nano wscript
+```
+
+Register new `ntn-channel.cc` and `ntn-mobility.cc`
+
+---
+
+### **4. Detailed Path Summary**
+
+| **Action**       | **File Path**                          | **Purpose**                          |
+|------------------|---------------------------------------|--------------------------------------|
+| **Create**       | `src/oran/model/ntn-channel.h`        | NTN propagation loss/delay models    |
+| **Create**       | `src/oran/model/ntn-channel.cc`       | Implementation                       |
+| **Create**       | `src/oran/model/ntn-mobility.h`       | Satellite orbital models             |
+| **Create**       | `src/oran/model/ntn-mobility.cc`      | Implementation                       |
+| **Modify**       | `src/nr/model/nr-phy.h`               | Add `SetNtnMode()` declaration       |
+| **Modify**       | `src/nr/model/nr-phy.cc`              | Implement NTN adaptations            |
+| **Modify**       | `src/oran/model/oran-near-rt-ric.h`   | Add NTN report handling              |
+| **Modify**       | `src/oran/model/oran-near-rt-ric.cc`  | Implement NTN logic                  |
+| **Modify**       | `src/oran/wscript`                    | Register new source files            |
+
+---
+
+### **5. Verification Commands**
+After creating/modifying files:
+
+```bash
+# Check new files exist
+ls src/oran/model/ntn-* 
+
+# Verify builds
+cd ~/ns3-install/ns-3-dev
+./ns3 configure --enable-examples --enable-tests | grep "oran"
+./ns3 build
+
+# Run test (if example created)
+./ns3 run src/oran/examples/oran-ntn-example
+```
+
+---
+
 ## **Step 5: Test 5G NTN Scenario**  
 Create `scratch/ntn-demo.cc`:  
 ```cpp
