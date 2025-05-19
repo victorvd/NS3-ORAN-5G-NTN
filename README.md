@@ -205,6 +205,3 @@ int main (int argc, char *argv[]) {
 - [NIST ns3-oran](https://github.com/usnistgov/ns3-oran)  
 - [CTTC NR Module](https://gitlab.com/cttc-lena/nr)  
 - [3GPP NTN TR 38.811](https://www.3gpp.org/ftp/Specs/archive/)  
-
-Let me know if you need any clarification! 🚀
-
