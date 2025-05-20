@@ -318,7 +318,7 @@ void OranNearRtRic::ProcessNtnReport(Ptr<NtnReport> report) {
 }
 ```
 
-#### Additional Required Changes
+#### **C. Additional Required Changes**
 
 For full functionality, you'll need to add these to `src/nr/model/nr-phy.h` (in the class declaration):
 ```bash
@@ -342,11 +342,11 @@ public:
 };
 ```
 
-Define TddPattern adding this to nr-phy.h just after the header includes but before the NrPhy class declaration::
+Define `TddPattern` adding this to `nr-phy.h` just after the header includes but before the `NrPhy class` declaration::
 ```bash
 // src/nr/model/nr-phy.h
 
-// after namespace ns3 {
+// after "namespace ns3 {"
 
 // Add these definitions before any class declarations
 enum class TddSlotType {
@@ -360,11 +360,11 @@ struct TddPattern {
     uint16_t numSlots;
 };
 
-// before class NrPhy : public Object {
+// before "class NrPhy : public Object {"
 ```
 
 
-Add these implementations to src/nr/model/nr-phy.cc:
+Add these implementations to `src/nr/model/nr-phy.cc`:
 ```bash
 TddPattern
 NrPhy::GetNtnTddPattern() const
@@ -390,7 +390,7 @@ NrPhy::GetNtnHarqTimer() const
 }
 ```
 
-Modify the `SetNtnMode() method to use these helpers:
+Modify the `SetNtnMode()` method to use these helpers:
 ```bash
 void 
 NrPhy::SetNtnMode(bool ntnEnabled)
@@ -413,25 +413,7 @@ cd ~/ns3-install/ns-3-dev
 ./ns3 build nr
 ```
 
-Update wscript (if adding new headers):
-```bash
-# In src/nr/wscript
-module.source.append('model/nr-phy.cc')
-module.header.append('model/nr-phy.h')
-```
-
-
-
-
-
-
-
-
-
-
-
-
-#### **C. Build System (wscript)**
+#### **D. Build System (wscript)**
 ```bash
 ~/ns3-install/ns-3-dev/src/oran/
 nano wscript
