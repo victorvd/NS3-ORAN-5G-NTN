@@ -407,12 +407,6 @@ void NrPhy::UpdateTxConfiguration() {
 }
 ```
 
-Check compilation:
-```bash
-cd ~/ns3-install/ns-3-dev
-./ns3 build nr
-```
-
 Be sure this enum is present in `src/nr/model/nr-control-messages.h`:
 ```bash
 // Ensure this enum exists
@@ -422,6 +416,12 @@ enum LteNrTddSlotType : uint8_t {
     F = 2,  // Flexible
     UL = 3  // Uplink
 };
+```
+
+Check compilation:
+```bash
+cd ~/ns3-install/ns-3-dev
+./ns3 build nr
 ```
 
 #### **D. Build System (wscript)**
