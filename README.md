@@ -424,16 +424,27 @@ cd ~/ns3-install/ns-3-dev
 ./ns3 build nr
 ```
 
-#### **D. Build System (wscript)**
+#### **D. CMake Build System (NS-3.35+)**
 ```bash
-~/ns3-install/ns-3-dev/src/oran/
-nano wscript
+cd ~/ns3-install/ns-3-dev/src/oran/
+nano CMakeLists.txt
 ```
 
 Register new `ntn-channel.cc` and `ntn-mobility.cc`
 ```bash
-module.source.append('model/ntn-channel.cc')
-module.source.append('model/ntn-mobility.cc')
+set(SOURCE_FILES
+    model/oran-near-rt-ric.cc
+    # ... existing files ...
+    model/ntn-channel.cc      # Add new files here
+    model/ntn-mobility.cc
+)
+
+set(HEADER_FILES
+    model/oran-near-rt-ric.h
+    # ... existing headers ...
+    model/ntn-channel.h       # Add new headers
+    model/ntn-mobility.h
+)
 ```
 
 ---
