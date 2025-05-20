@@ -243,28 +243,25 @@ public:
    * @param ueMobility UE mobility model
    * @param satMobility Satellite mobility model
    */
-  void DoSetNtnDopplerParameters(Ptr<MobilityModel> ueMobility,
-                               Ptr<MobilityModel> satMobility);
 
-private:
-  bool m_ntnMode {false}; // Add this member variable
+    // after this line "std::list<Ptr<NrControlMessage>> m_ctrlMsgs;"
+    bool m_ntnMode {false}; //!< NTN operation flag
 ```
 
 ```bash
 // src/nr/model/nr-phy.cc
-// Add anywhere in the implementation (around line 1000-1500 in most versions)
-void
+void // Add anywhere in the implementation (around line 1000-1500 in most versions)
 NrPhy::SetNtnMode(bool ntnEnabled)
 {
-  m_ntnMode = ntnEnabled;
-  
-  if (ntnEnabled) {
-    // Get NTN-specific configurations
-    m_tddPattern = GetNtnTddPattern(); // Longer guard periods
-    m_harqTimer = GetNtnHarqTimer();   // Extended timers
-    
-    NS_LOG_INFO("NTN mode activated with TDD pattern: " << m_tddPattern);
-  }
+    m_ntnMode = ntnEnabled;
+    if (ntnEnabled) {
+        m_tddPattern = GetNtnTddPattern();
+        m_harqTimer = GetNtnHarqTimer(); // Now properly declared
+        
+        NS_LOG_INFO("Configured NTN mode with " << 
+                   m_tddPattern.size() << "-slot pattern and " <<
+                   m_harqTimer.GetMilliSeconds() << "ms HARQ timer");
+    }
 }
 
 void
@@ -328,22 +325,27 @@ void OranNearRtRic::ProcessNtnReport(Ptr<NtnReport> report) {
 For full functionality, you'll need to add these to `src/nr/model/nr-phy.h` (in the class declaration):
 ```bash
 class NrPhy {
+
+// ... existing code ...
 public:
-    // ... existing code ...
-
-    /**
-     * Get NTN-specific TDD pattern
-     * @return Configured TDD pattern for NTN
-     */
+    // Additions
+    typedef std::vector<LteNrTddSlotType> TddPattern;
     TddPattern GetNtnTddPattern() const;
-
-    /**
-     * Get extended HARQ timer for NTN
-     * @return HARQ timer duration
-     */
     Time GetNtnHarqTimer() const;
+    void SetNtnMode(bool ntnEnabled);
+    void DoSetNtnDopplerParameters(Ptr<MobilityModel> ueMobility,
+                               Ptr<MobilityModel> satMobility);
+    void UpdateTxConfiguration();
 
-    // ... rest of class ...
+private:
+    // Additions
+    // bool m_ntnMode {false};
+    Time m_harqTimer;
+    TddPattern m_tddPattern;
+    double m_centralFrequency;
+    double m_txFrequency;
+
+// ... rest of class ...
 };
 ```
 
@@ -371,44 +373,37 @@ struct TddPattern {
 
 Add these implementations to `src/nr/model/nr-phy.cc`:
 ```bash
-TddPattern
-NrPhy::GetNtnTddPattern() const
+// New implementations
+NrPhy::TddPattern
+NrPhy::GetNtnTddPattern() const  // Note the NrPhy:: prefix
 {
-    // Example NTN pattern (D=Downlink, U=Uplink, G=Guard)
-    static const TddPattern ntnPattern {
-        // 5ms frame with extended guard periods
-        {TddSlotType::D, TddSlotType::D, TddSlotType::G, 
-         TddSlotType::U, TddSlotType::U, TddSlotType::G},
-        6 // Number of slots
+    return {
+        LteNrTddSlotType::DL,  // Downlink
+        LteNrTddSlotType::DL,
+        LteNrTddSlotType::S,    // Special/Guard
+        LteNrTddSlotType::UL,   // Uplink
+        LteNrTddSlotType::UL,
+        LteNrTddSlotType::S     // Special/Guard
     };
-    return ntnPattern;
 }
 
 Time
-NrPhy::GetNtnHarqTimer() const
+NrPhy::GetNtnHarqTimer() const  // Note the NrPhy:: prefix
 {
-    // Extended timer accounting for LEO propagation delay (100ms example)
-    return MilliSeconds(100); 
-    
-    // For GEO satellites, you might use:
-    // return MilliSeconds(500); // 500ms for GEO
-}
-```
-
-Modify the `SetNtnMode()` method to use these helpers:
-```bash
-void 
-NrPhy::SetNtnMode(bool ntnEnabled)
-{
-    m_ntnMode = ntnEnabled;
-    
-    if (ntnEnabled) {
-        m_tddPattern = GetNtnTddPattern();
-        m_harqTimer = GetNtnHarqTimer();
-        
-        NS_LOG_LOGIC("NTN mode activated with " << 
-                    m_tddPattern.numSlots << "-slot TDD pattern");
+    // Adjust these values based on your NTN requirements:
+    if (m_ntnMode) {
+        // LEO satellites: 100-200ms
+        // GEO satellites: 500-600ms
+        return MilliSeconds(150); // Example for LEO
     }
+    return MilliSeconds(8); // Default terrestrial value
+}
+
+void NrPhy::UpdateTxConfiguration() {
+    if (m_spectrumPhy) {
+        m_spectrumPhy->SetTxFrequency(m_txFrequency);
+    }
+    NS_LOG_INFO("Updated TX config. Frequency: " << m_txFrequency << " Hz");
 }
 ```
 
@@ -416,6 +411,17 @@ Check compilation:
 ```bash
 cd ~/ns3-install/ns-3-dev
 ./ns3 build nr
+```
+
+Be sure this enum is present in `src/nr/model/nr-control-messages.h`:
+```bash
+// Ensure this enum exists
+enum LteNrTddSlotType : uint8_t {
+    DL = 0, // Downlink
+    S = 1,  // Special/Guard
+    F = 2,  // Flexible
+    UL = 3  // Uplink
+};
 ```
 
 #### **D. Build System (wscript)**
