@@ -318,6 +318,119 @@ void OranNearRtRic::ProcessNtnReport(Ptr<NtnReport> report) {
 }
 ```
 
+#### Additional Required Changes
+
+For full functionality, you'll need to add these to `src/nr/model/nr-phy.h` (in the class declaration):
+```bash
+class NrPhy {
+public:
+    // ... existing code ...
+
+    /**
+     * Get NTN-specific TDD pattern
+     * @return Configured TDD pattern for NTN
+     */
+    TddPattern GetNtnTddPattern() const;
+
+    /**
+     * Get extended HARQ timer for NTN
+     * @return HARQ timer duration
+     */
+    Time GetNtnHarqTimer() const;
+
+    // ... rest of class ...
+};
+```
+
+Define TddPattern adding this to nr-phy.h just after the header includes but before the NrPhy class declaration::
+```bash
+// src/nr/model/nr-phy.h
+
+// after namespace ns3 {
+
+// Add these definitions before any class declarations
+enum class TddSlotType {
+    D, // Downlink
+    U, // Uplink
+    G  // Guard period
+};
+
+struct TddPattern {
+    std::vector<TddSlotType> slots;
+    uint16_t numSlots;
+};
+
+// before class NrPhy : public Object {
+```
+
+
+Add these implementations to src/nr/model/nr-phy.cc:
+```bash
+TddPattern
+NrPhy::GetNtnTddPattern() const
+{
+    // Example NTN pattern (D=Downlink, U=Uplink, G=Guard)
+    static const TddPattern ntnPattern {
+        // 5ms frame with extended guard periods
+        {TddSlotType::D, TddSlotType::D, TddSlotType::G, 
+         TddSlotType::U, TddSlotType::U, TddSlotType::G},
+        6 // Number of slots
+    };
+    return ntnPattern;
+}
+
+Time
+NrPhy::GetNtnHarqTimer() const
+{
+    // Extended timer accounting for LEO propagation delay (100ms example)
+    return MilliSeconds(100); 
+    
+    // For GEO satellites, you might use:
+    // return MilliSeconds(500); // 500ms for GEO
+}
+```
+
+Modify the `SetNtnMode() method to use these helpers:
+```bash
+void 
+NrPhy::SetNtnMode(bool ntnEnabled)
+{
+    m_ntnMode = ntnEnabled;
+    
+    if (ntnEnabled) {
+        m_tddPattern = GetNtnTddPattern();
+        m_harqTimer = GetNtnHarqTimer();
+        
+        NS_LOG_LOGIC("NTN mode activated with " << 
+                    m_tddPattern.numSlots << "-slot TDD pattern");
+    }
+}
+```
+
+Check compilation:
+```bash
+cd ~/ns3-install/ns-3-dev
+./ns3 build nr
+```
+
+Update wscript (if adding new headers):
+```bash
+# In src/nr/wscript
+module.source.append('model/nr-phy.cc')
+module.header.append('model/nr-phy.h')
+```
+
+
+
+
+
+
+
+
+
+
+
+
 #### **C. Build System (wscript)**
 ```bash
 ~/ns3-install/ns-3-dev/src/oran/
