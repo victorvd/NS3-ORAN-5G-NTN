@@ -222,6 +222,11 @@ cd ~/ns3-install/ns-3-dev/src/nr/model
 nano nr-phy.h nr-phy.cc
 ```
 
+Add the MobilityModel class declaration. Add this include at the top of the file (with other includes):
+```bash
+#include "ns3/mobility-model.h"
+```
+
 Add NTN mode and Doppler compensation
 ```bash
 // src/nr/model/nr-phy.h
