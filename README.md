@@ -399,12 +399,12 @@ NrPhy::GetNtnHarqTimer() const  // Note the NrPhy:: prefix
     return MilliSeconds(8); // Default terrestrial value
 }
 
-void NrPhy::UpdateTxConfiguration() {
-    if (m_spectrumPhy) {
-        m_spectrumPhy->SetTxFrequency(m_txFrequency);
-    }
-    NS_LOG_INFO("Updated TX config. Frequency: " << m_txFrequency << " Hz");
-}
+//void NrPhy::UpdateTxConfiguration() {
+//    if (m_spectrumPhy) {
+//        m_spectrumPhy->SetTxFrequency(m_txFrequency);
+//    }
+//    NS_LOG_INFO("Updated TX config. Frequency: " << m_txFrequency << " Hz");
+//}
 ```
 
 Be sure this enum is present in `src/nr/model/nr-control-messages.h`:
