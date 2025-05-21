@@ -545,3 +545,82 @@ int main (int argc, char *argv[]) {
 - [NIST ns3-oran](https://github.com/usnistgov/ns3-oran)  
 - [CTTC NR Module](https://gitlab.com/cttc-lena/nr)  
 - [3GPP NTN TR 38.811](https://www.3gpp.org/ftp/Specs/archive/)  
+
+
+
+Install 
+```bash
+cd ns3-install/
+git clone https://github.com/dnwrnr/sgp4.git
+cd sgp4
+mkdir build
+cd build
+cmake ..
+make
+make install
+```
+
+Into /ns3-install/ns-3-dev/src/oranCMakeLists.txt
+
+```bash
+# //==//==//==//==//==//==//==// Find SGP4 headers and library //==//==//==//==//==//==//==//
+# Set SGP4 paths (custom install location)
+set(SGP4_INSTALL_DIR "/home/eneas/ns3-install/sgp4/build/install")
+set(SGP4_INCLUDE_DIR "${SGP4_INSTALL_DIR}/include/libsgp4")  # Headers are in include/libsgp4/
+set(SGP4_LIBRARY "${SGP4_INSTALL_DIR}/lib/libsgp4s.so")      # Library name is libsgp4s.so
+
+# Verify paths
+if (NOT EXISTS "${SGP4_INCLUDE_DIR}/SGP4.h")
+    message(FATAL_ERROR "SGP4 headers missing! Expected: ${SGP4_INCLUDE_DIR}/SGP4.h")
+endif()
+
+if (NOT EXISTS "${SGP4_LIBRARY}")
+    message(FATAL_ERROR "SGP4 library missing! Expected: ${SGP4_LIBRARY}")
+endif()
+# //==//==//==//==//==//==//==////==//==//==//==//==//==//==////==//==//==//==//==//==//==//
+
+...
+
+// At the end
+
+target_compile_definitions(${liboran} PUBLIC ENABLE_ORAN)
+
+# Link to ORAN module
+target_include_directories(oran PRIVATE ${SGP4_INCLUDE_DIR})
+target_link_libraries(oran PRIVATE ${SGP4_LIBRARY})
+
+# Add compiler flag for SGP4 (if needed)
+target_compile_definitions(oran PRIVATE HAS_SGP4)
+```
+
+Modify src/oran/model/ntn-channel.h
+
+```bash
+#ifndef NTN_CHANNEL_H
+#define NTN_CHANNEL_H
+
+#include "ns3/channel.h"
+#include "ns3/mobility-model.h"
+
+#include "ns3/propagation-loss-model.h"
+#include "ns3/propagation-delay-model.h"
+
+namespace ns3 {
+```
+
+Add this to src/oran/model/nr-phy.cc
+
+```bash
+double
+NtnChannel::CalculatePathLoss(Ptr<MobilityModel> tx, Ptr<MobilityModel> rx) const {
+    double distance = tx->GetDistanceFrom(rx);
+    double frequency = 2e9; // Example: 2 GHz carrier
+
+    // Define variables locally
+    double fspl = 20 * std::log10(distance) + 20 * std::log10(frequency) + 20 * std::log10(4 * M_PI / 299792458.0);
+    double atmosphericLoss = 0.1 * (distance / 1000); // 0.1 dB/km
+    double rainAttenuation = 2.0; // 2 dB (example)
+    
+    return fspl + atmosphericLoss + rainAttenuation;
+}
+```
